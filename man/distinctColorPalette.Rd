@@ -4,7 +4,7 @@
 \alias{distinctColorPalette}
 \title{Generate palettes of optimally distinct colors.}
 \usage{
-distinctColorPalette(k = 1, altCol = FALSE, runTsne = FALSE)
+distinctColorPalette(k = 1, altCol = FALSE, runTsne = FALSE, seed = 42)
 }
 \arguments{
 \item{k}{number of colors (>= 1). May be ineffective for k > 40.}
@@ -12,6 +12,8 @@ distinctColorPalette(k = 1, altCol = FALSE, runTsne = FALSE)
 \item{altCol}{Use an alternate color space}
 
 \item{runTsne}{Preprocess color space with t-SNE to obtain distinct colors. Reduces performance.}
+
+\item{seed}{number to be repeatable.}
 }
 \value{
 A character vector of k optimally distinct colors in hexadecimal codes.

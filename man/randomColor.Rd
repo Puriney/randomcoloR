@@ -4,9 +4,13 @@
 \alias{randomColor}
 \title{Get a pretty random color.}
 \usage{
-randomColor(count = 1, hue = c(" ", "random", "red", "orange", "yellow",
-  "green", "blue", "purple", "pink", "monochrome"), luminosity = c(" ",
-  "random", "light", "bright", "dark"))
+randomColor(
+  count = 1,
+  hue = c(" ", "random", "red", "orange", "yellow", "green", "blue", "purple", "pink",
+    "monochrome"),
+  luminosity = c(" ", "random", "light", "bright", "dark"),
+  seed = 42
+)
 }
 \arguments{
 \item{count}{number of colors (>= 1)}
@@ -14,6 +18,8 @@ randomColor(count = 1, hue = c(" ", "random", "red", "orange", "yellow",
 \item{hue}{The hue of the colors to be selected.}
 
 \item{luminosity}{The luminosity of the colors to be selected.}
+
+\item{seed}{number to be repeatable.}
 }
 \value{
 A character vector of random color hexadecimal codes.
