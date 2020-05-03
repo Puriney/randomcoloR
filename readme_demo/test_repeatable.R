@@ -1,7 +1,7 @@
 library(scales)
 library(randomcoloR)
 
-c1 <- distinctColorPalette(k = 20, seed=2020)
+c1 <- distinctColorPalette(k = 20, seed=12)
 c2 <- randomColor(count=20, hue = 'red', luminosity = 'light', seed=2020)
 
 message('Distinct colors are repeatable:')
@@ -13,7 +13,7 @@ print(c2)
 message('The seed number in randomcolorR does not interrupt the global randomness')
 print(rnorm(10))
 
-pdf("demo/repeatable.pdf", width = 7, onefile = T)
+pdf("~/repeatable.pdf", width = 7, onefile = T)
 plot(1)
 scales::show_col(c1)
 scales::show_col(c2)
