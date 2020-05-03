@@ -6,7 +6,9 @@
 #' @param count number of colors (>= 1)
 #' @param hue The hue of the colors to be selected.
 #' @param luminosity The luminosity of the colors to be selected.
+#' @param seed number to be repeatable.
 #' @return A character vector of random color hexadecimal codes.
+
 #' @examples
 #' randomColor()
 #'
@@ -17,15 +19,13 @@
 #' @import stringr
 randomColor <- function(count=1,
                         hue=c(" ", "random", "red", "orange", "yellow", "green", "blue", "purple", "pink", "monochrome"),
-                        luminosity=c(" ", "random", "light", "bright", "dark")
-) {
+                        luminosity=c(" ", "random", "light", "bright", "dark"),
+                        seed=42) {
   hue <- match.arg(hue)
   luminosity <- match.arg(luminosity)
-
-  str_split(ct$eval(paste0("randomColor({hue:'", hue, "',",
-                           "luminosity:'", luminosity,"',",
-                           "count:", count,"})")
-  ), ",")[[1]]
+  cmd <- sprintf("randomColor({hue:'%s', luminosity:'%s', count:%d, seed:%d})",
+                 hue, luminosity, count, seed)  
+  str_split(ct$eval(cmd), ",")[[1]]
 }
 
 
@@ -36,13 +36,23 @@ randomColor <- function(count=1,
 #' @param k number of colors (>= 1). May be ineffective for k > 40.
 #' @param altCol Use an alternate color space
 #' @param runTsne Preprocess color space with t-SNE to obtain distinct colors. Reduces performance.
+#' @param seed number to be repeatable.
 #' @return A character vector of k optimally distinct colors in hexadecimal codes.
 #' @export
-#' @import cluster Rtsne
-distinctColorPalette <-function(k=1, altCol=FALSE, runTsne=FALSE) {
-  currentColorSpace <- ourColorSpace@coords
+#' @import cluster Rtsne scales
+distinctColorPalette <-function(k=1, altCol=FALSE, runTsne=FALSE, seed=42) {
+    
+  # Compute a 2000 color spectrum and convert to LAB
+  runif(1)
+  old_seed <- .Random.seed ## Keep this seed work only locally https://stackoverflow.com/a/14324316/1608734
+  on.exit({.Random.seed <<- old_seed})
+  set.seed(seed)
+  n <- 2e3
+  currentColorSpace <- colorspace::RGB(runif(n), runif(n), runif(n))
+  currentColorSpace <- as(currentColorSpace, "LAB")
+  currentColorSpace <- currentColorSpace@coords
   if (altCol) {
-    currentColorSpace <- alternateColorSpace
+    currentColorSpace <- t(unique(grDevices::col2rgb(scales::hue_pal(l=60:100)(n)))) ## Note: hue_pal no longer accepts multiple l
   }
 
   if (runTsne) {
