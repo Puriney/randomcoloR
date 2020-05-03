@@ -3,12 +3,8 @@
 
 ;(function(root, factory) {
 
-  // Support AMD
-  if (typeof define === 'function' && define.amd) {
-    define([], factory);
-
   // Support CommonJS
-  } else if (typeof exports === 'object') {
+  if (typeof exports === 'object') {
     var randomColor = factory();
 
     // Support NodeJS & Component, which allow module.exports to be a function
@@ -18,6 +14,10 @@
 
     // Support CommonJS 1.1.1 spec
     exports.randomColor = randomColor;
+
+  // Support AMD
+  } else if (typeof define === 'function' && define.amd) {
+    define([], factory);
 
   // Support vanilla script loading
   } else {
@@ -35,13 +35,16 @@
   // Populate the color dictionary
   loadColorBounds();
 
+  // check if a range is taken
+  var colorRanges = [];
+
   var randomColor = function (options) {
 
     options = options || {};
 
     // Check if there is a seed and ensure it's an
     // integer. Otherwise, reset the seed value.
-    if (options.seed && options.seed === parseInt(options.seed, 10)) {
+    if (options.seed !== undefined && options.seed !== null && options.seed === parseInt(options.seed, 10)) {
       seed = options.seed;
 
     // A string was passed as a seed
@@ -64,7 +67,10 @@
 
       var totalColors = options.count,
           colors = [];
-
+      // Value false at index i means the range i is not taken yet.
+      for (var i = 0; i < options.count; i++) {
+        colorRanges.push(false)
+        }
       options.count = null;
 
       while (totalColors > colors.length) {
@@ -95,27 +101,57 @@
     return setFormat([H,S,B], options);
   };
 
-  function pickHue (options) {
+  function pickHue(options) {
+    if (colorRanges.length > 0) {
+      var hueRange = getRealHueRange(options.hue)
 
-    var hueRange = getHueRange(options.hue),
-        hue = randomWithin(hueRange);
+      var hue = randomWithin(hueRange)
 
-    // Instead of storing red as two seperate ranges,
-    // we group them, using negative numbers
-    if (hue < 0) {hue = 360 + hue;}
+      //Each of colorRanges.length ranges has a length equal approximatelly one step
+      var step = (hueRange[1] - hueRange[0]) / colorRanges.length
 
-    return hue;
+      var j = parseInt((hue - hueRange[0]) / step)
 
+      //Check if the range j is taken
+      if (colorRanges[j] === true) {
+        j = (j + 2) % colorRanges.length
+      }
+      else {
+        colorRanges[j] = true
+           }
+
+      var min = (hueRange[0] + j * step) % 359,
+          max = (hueRange[0] + (j + 1) * step) % 359;
+
+      hueRange = [min, max]
+
+      hue = randomWithin(hueRange)
+
+      if (hue < 0) {hue = 360 + hue;}
+      return hue
+    }
+    else {
+      var hueRange = getHueRange(options.hue)
+
+      hue = randomWithin(hueRange);
+      // Instead of storing red as two seperate ranges,
+      // we group them, using negative numbers
+      if (hue < 0) {
+        hue = 360 + hue;
+      }
+
+      return hue;
+    }
   }
 
   function pickSaturation (hue, options) {
 
-    if (options.luminosity === 'random') {
-      return randomWithin([0,100]);
-    }
-
     if (options.hue === 'monochrome') {
       return 0;
+    }
+
+    if (options.luminosity === 'random') {
+      return randomWithin([0,100]);
     }
 
     var saturationRange = getSaturationRange(hue);
@@ -182,7 +218,8 @@
 
       case 'hsla':
         var hslColor = HSVtoHSL(hsv);
-        return 'hsla('+hslColor[0]+', '+hslColor[1]+'%, '+hslColor[2]+'%, ' + Math.random() + ')';
+        var alpha = options.alpha || Math.random();
+        return 'hsla('+hslColor[0]+', '+hslColor[1]+'%, '+hslColor[2]+'%, ' + alpha + ')';
 
       case 'rgbArray':
         return HSVtoRGB(hsv);
@@ -193,7 +230,8 @@
 
       case 'rgba':
         var rgbColor = HSVtoRGB(hsv);
-        return 'rgba(' + rgbColor.join(', ') + ', ' + Math.random() + ')';
+        var alpha = options.alpha || Math.random();
+        return 'rgba(' + rgbColor.join(', ') + ', ' + alpha + ')';
 
       default:
         return HSVtoHex(hsv);
@@ -243,6 +281,9 @@
       if (colorDictionary[colorInput]) {
         var color = colorDictionary[colorInput];
         if (color.hueRange) {return color.hueRange;}
+      } else if (colorInput.match(/^#?([0-9A-F]{3}|[0-9A-F]{6})$/i)) {
+        var hue = HexToHSB(colorInput)[0];
+        return [ hue, hue ];
       }
     }
 
@@ -273,7 +314,12 @@
 
   function randomWithin (range) {
     if (seed === null) {
-      return Math.floor(range[0] + Math.random()*(range[1] + 1 - range[0]));
+      //generate random evenly destinct number from : https://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
+      var golden_ratio = 0.618033988749895
+      var r=Math.random()
+      r += golden_ratio
+      r %= 1
+      return Math.floor(range[0] + r*(range[1] + 1 - range[0]));
     } else {
       //Seeded random algorithm from http://indiegamr.com/generate-repeatable-random-numbers-in-js/
       var max = range[1] || 1;
@@ -281,7 +327,7 @@
       seed = (seed * 9301 + 49297) % 233280;
       var rnd = seed / 233280.0;
       return Math.floor(min + rnd * (max - min));
-    }
+}
   }
 
   function HSVtoHex (hsv){
@@ -403,6 +449,25 @@
     return result;
   }
 
+  function HexToHSB (hex) {
+    hex = hex.replace(/^#/, '');
+    hex = hex.length === 3 ? hex.replace(/(.)/g, '$1$1') : hex;
+
+    var red = parseInt(hex.substr(0, 2), 16) / 255,
+          green = parseInt(hex.substr(2, 2), 16) / 255,
+          blue = parseInt(hex.substr(4, 2), 16) / 255;
+
+    var cMax = Math.max(red, green, blue),
+          delta = cMax - Math.min(red, green, blue),
+          saturation = cMax ? (delta / cMax) : 0;
+
+    switch (cMax) {
+      case red: return [ 60 * (((green - blue) / delta) % 6) || 0, saturation, cMax ];
+      case green: return [ 60 * (((blue - red) / delta) + 2) || 0, saturation, cMax ];
+      case blue: return [ 60 * (((red - green) / delta) + 4) || 0, saturation, cMax ];
+    }
+  }
+
   function HSVtoHSL (hsv) {
     var h = hsv[0],
       s = hsv[1]/100,
@@ -425,5 +490,30 @@
     return total
   }
 
+  // get The range of given hue when options.count!=0
+  function getRealHueRange(colorHue)
+  { if (!isNaN(colorHue)) {
+    var number = parseInt(colorHue);
+
+    if (number < 360 && number > 0) {
+      return getColorInfo(colorHue).hueRange
+    }
+  }
+    else if (typeof colorHue === 'string') {
+
+      if (colorDictionary[colorHue]) {
+        var color = colorDictionary[colorHue];
+
+        if (color.hueRange) {
+          return color.hueRange
+       }
+    } else if (colorHue.match(/^#?([0-9A-F]{3}|[0-9A-F]{6})$/i)) {
+        var hue = HexToHSB(colorHue)[0]
+        return getColorInfo(hue).hueRange
+    }
+  }
+
+    return [0,360]
+}
   return randomColor;
 }));
